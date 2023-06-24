@@ -27,7 +27,7 @@ sequenceDiagram
 
     browser->>server: GET https://studies.cs.helsinki.fi/exampleapp/data.json
     activate server
-    server-->>browser: 200 status code - [{"content": "check", "date": "2023-06-24T03:55:48.770Z"}, ...]
+    server-->>browser: 200 status code - [... , {"content": "check", "date": "2023-06-24T03:55:48.770Z"}]
     deactivate server
 
-    Note right of browser: browser executes  callback function that renders the notes
+    Note right of browser: browser executes  callback function that renders the notes along with the new note
