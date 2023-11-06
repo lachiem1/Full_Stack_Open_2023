@@ -1,72 +1,10 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios';
 
-const Persons = ({personsToShow}) => {
-  return (
-    <ul>
-      {personsToShow.map(person =>
-          <Info key={person.id} info={person} />
-        )
-      }
-    </ul>
-  )
-};
-
-const PersonForm = ({addPerson, newName, setNewName, newNumber, setNewNumber}) => {
-  const handleNameChange = (event) => {
-    setNewName(event.target.value)
-  };
-
-  const handleNumberChange = (event) => {
-    setNewNumber(event.target.value)
-  };
-
-  return (
-    <form onSubmit={addPerson}>
-      <div>
-        name: 
-        <input 
-          value={newName}
-          onChange={handleNameChange}
-        />
-      </div>
-      <div>
-        number:
-        <input 
-          value={newNumber}
-          onChange={handleNumberChange}
-        />
-      </div>
-      <div>
-        <button type="submit">add</button>
-      </div>
-    </form>
-  )
-};
-
-const Filter = ({searchName, setSearchName}) => {
-  const handleSearchNameChange = (event) => {
-    setSearchName(event.target.value)
-  };
-
-  return (
-    <>
-      Filter by name: 
-      <input
-        value={searchName}
-        onChange={handleSearchNameChange}
-      />
-    </>
-  )
-};
-
-const Info = ({info}) => {
-  return (
-    <ul>
-      {info.name} {info.number}
-    </ul>
-  )
-}
+import Filter from './components/Filter';
+import Persons from './components/Persons';
+import PersonForm from './components/PersonForm';
+import Services from './services/persons';
 
 const App = () => {
   const [persons, setPersons] = useState([]);
@@ -74,38 +12,67 @@ const App = () => {
   const [newNumber, setNewNumber] = useState('')
   const [searchName, setSearchName] = useState('')
 
+
   useEffect(() => {
-    axios
-      .get('http://localhost:3001/persons')
-      .then(response => {
-        console.log('promise fulfilled')
-        setPersons(response.data)
-      })
+    Services
+      .getAll()
+      .then(existingPersons => setPersons(existingPersons))
+      .catch(error => console.log('get request failed'))
   }, []);
 
   const addPerson = (event) => {
     event.preventDefault();
 
+    // Find the max id that currently exists, and create the newID as maxID+1
+    const newID = persons.reduce((max, p) => (p.id > max ? p.id : max), 0) + 1;
+
     const personObj = {
       name: newName,
       number: newNumber,
-      id: persons.length + 1,
-    }
+      id: newID,
+    };
 
     const newNameLowerCase = newName.toLowerCase();
     const personsLowerCase = persons.map(p => p.name.toLowerCase());
 
     if (personsLowerCase.includes(newNameLowerCase)) {
-      alert(`${newName} already exists in phone book. Duplicates are not allowed!`)
+      if (window.confirm(`${newName} already exists in phone book. Do you want to replace the old number with a new one?`)) {
+        const existingPerson = persons.find(p => p.name.toLowerCase() === newName.toLowerCase());
+        
+        const updatedPerson = {
+          name: existingPerson.name,
+          number: newNumber,
+          id: existingPerson.id,
+        };
+
+        Services
+          .update(existingPerson.id, updatedPerson)
+          .then(retrievedPerson => {
+            setPersons(persons.map(p => p.id === existingPerson.id ? retrievedPerson : p))
+            setNewName('')
+            setNewNumber('')
+          })
+          .catch(error => console.log('put request failed'))
+      }
     }
     else {
-      setPersons(persons.concat(personObj))
-      setNewName('')
-      setNewNumber('')
+      Services
+        .create(personObj)
+        .then(newPerson => {
+          setPersons(persons.concat(newPerson))
+          setNewName('')
+          setNewNumber('')
+        })
+        .catch(error => console.log('post request failed'))
     }
   };
 
   const personsToShow = searchName === '' ? persons : persons.filter(p => p.name.toLowerCase().includes(searchName.toLowerCase()));
+
+  const handleDeletePerson = (id) => {
+    const updatedPersons = persons.filter(p => p.id !== id);
+    setPersons(updatedPersons)
+  };
 
   return (
     <div>
@@ -113,7 +80,7 @@ const App = () => {
       <Filter searchName={searchName} setSearchName={setSearchName}/>
       <PersonForm addPerson={addPerson} newName={newName} setNewName={setNewName} newNumber={newNumber} setNewNumber={setNewNumber} />
       <h2>Numbers</h2>
-      <Persons personsToShow={personsToShow}/>
+      <Persons personsToShow={personsToShow} onDeletePerson={handleDeletePerson}/>
     </div>
   )
 }
