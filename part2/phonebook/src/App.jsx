@@ -2,21 +2,25 @@ import { useState, useEffect } from 'react'
 import axios from 'axios';
 
 import Filter from './components/Filter';
+import Notification from './components/Notification';
 import Persons from './components/Persons';
 import PersonForm from './components/PersonForm';
 import Services from './services/persons';
 
 const App = () => {
   const [persons, setPersons] = useState([]);
-  const [newName, setNewName] = useState('')
-  const [newNumber, setNewNumber] = useState('')
-  const [searchName, setSearchName] = useState('')
-
+  const [newName, setNewName] = useState('');
+  const [newNumber, setNewNumber] = useState('');
+  const [searchName, setSearchName] = useState('');
+  const [message, setMessage] = useState(null);
+  const [messageType, setMessageType] = useState(null);
 
   useEffect(() => {
     Services
       .getAll()
-      .then(existingPersons => setPersons(existingPersons))
+      .then(existingPersons => {
+        setPersons(existingPersons)
+      })
       .catch(error => console.log('get request failed'))
   }, []);
 
@@ -48,17 +52,36 @@ const App = () => {
         Services
           .update(existingPerson.id, updatedPerson)
           .then(retrievedPerson => {
+            setMessage(`Changed phone number for ${existingPerson.name}`)
+            setMessageType('add-change')
+            setTimeout(() => {
+              setMessage(null)
+              setMessageType(null)
+            }, 5000)
             setPersons(persons.map(p => p.id === existingPerson.id ? retrievedPerson : p))
             setNewName('')
             setNewNumber('')
           })
-          .catch(error => console.log('put request failed'))
+          .catch(error => {
+            setMessage(`${existingPerson.name} has already been removed from the server.`)
+            setMessageType('error')
+            setTimeout(() => {
+              setMessage(null)
+              setMessageType(null)
+            }, 5000)
+          })
       }
     }
     else {
       Services
         .create(personObj)
         .then(newPerson => {
+          setMessage(`Added ${newPerson.name} to phonebook`)
+          setMessageType('add-change')
+            setTimeout(() => {
+              setMessage(null)
+              setMessageType(null)
+            }, 5000)
           setPersons(persons.concat(newPerson))
           setNewName('')
           setNewNumber('')
@@ -76,6 +99,7 @@ const App = () => {
 
   return (
     <div>
+      <Notification message={message} type={messageType} />
       <h2>Phonebook</h2>
       <Filter searchName={searchName} setSearchName={setSearchName}/>
       <PersonForm addPerson={addPerson} newName={newName} setNewName={setNewName} newNumber={newNumber} setNewNumber={setNewNumber} />
