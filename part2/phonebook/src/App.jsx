@@ -86,7 +86,15 @@ const App = () => {
           setNewName('')
           setNewNumber('')
         })
-        .catch(error => console.log('post request failed'))
+        .catch(error => {
+          console.log(error.response.data.error)
+          setMessage(`${error.response.data.error}`)
+          setMessageType('error')
+          setTimeout(() => {
+            setMessage(null)
+            setMessageType(null)
+          }, 5000)
+        });
     }
   };
 
